@@ -1,0 +1,6 @@
+{
+  "name": "Roast My Portfolio",
+  "description": "AI-powered portfolio auditing web application providing constructive roasts, category scores, and actionable feedback for developers.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
