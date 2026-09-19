@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Flame, Code2, History, Menu, X, Terminal, ExternalLink } from 'lucide-react';
 
 interface NavbarProps {
-  currentView: 'landing' | 'results' | 'demo';
+  currentView: 'landing' | 'loading' | 'results' | 'demo';
   onNavigateHome: () => void;
   onOpenHistory: () => void;
   historyCount: number;
@@ -94,10 +94,20 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
           </button>
 
+          {currentView === 'loading' && (
+            <button
+              onClick={onNavigateHome}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md border border-neutral-700 bg-neutral-900 text-neutral-300 hover:text-white transition-colors cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>Cancel Audit</span>
+            </button>
+          )}
+
           {currentView === 'results' && (
             <button
               onClick={onNavigateHome}
-              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md bg-orange-500 hover:bg-orange-600 text-white transition-colors"
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md bg-orange-500 hover:bg-orange-600 text-white transition-colors cursor-pointer"
             >
               <Code2 className="w-3.5 h-3.5" />
               <span>Audit New URL</span>
@@ -165,6 +175,18 @@ export const Navbar: React.FC<NavbarProps> = ({
               {historyCount} saved
             </span>
           </button>
+
+          {currentView === 'loading' && (
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false);
+                onNavigateHome();
+              }}
+              className="w-full mt-2 py-2.5 rounded-lg border border-neutral-700 bg-neutral-900 hover:bg-neutral-800 text-neutral-200 text-sm font-semibold text-center block cursor-pointer"
+            >
+              Cancel Audit & Return Home
+            </button>
+          )}
 
           {currentView === 'results' && (
             <button

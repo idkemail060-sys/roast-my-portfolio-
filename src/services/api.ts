@@ -134,7 +134,7 @@ export function normalizeReview(raw: any): PortfolioReview {
 /**
  * Base JSON fetch helper with timeout and typed error parsing.
  */
-async function fetchJson<T>(url: string, options: RequestInit = {}, timeoutMs = 25000): Promise<T> {
+async function fetchJson<T>(url: string, options: RequestInit = {}, timeoutMs = 70000): Promise<T> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -197,7 +197,7 @@ export const reviewsApi = {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ url }),
-    }, 30000); // 30s timeout for live fetching + AI evaluation
+    }, 70000); // 70s timeout for live fetching + AI evaluation
 
     if (!response.success && !response.id) {
       throw new ApiClientError(response.error?.message || 'Failed to generate portfolio review.', response.error?.statusCode || 500);

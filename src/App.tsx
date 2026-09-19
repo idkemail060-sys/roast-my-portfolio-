@@ -7,12 +7,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Navbar } from './components/common/Navbar';
 import { Footer } from './components/common/Footer';
 import { HeroSection } from './components/landing/HeroSection';
-import { LoadingState } from './components/landing/LoadingState';
 import { HowItWorksSection } from './components/landing/HowItWorksSection';
 import { FeatureSection } from './components/landing/FeatureSection';
 import { ExampleScoreSection } from './components/landing/ExampleScoreSection';
 import { ResultsPage } from './components/results/ResultsPage';
 import { HistoryModal } from './components/history/HistoryModal';
+import { LoadingScreen } from './components/loading/LoadingScreen';
 import { PortfolioReview } from './types';
 import { reviewsApi, ApiClientError } from './services/api';
 import BlackHole from '@/components/ui/black-hole';
@@ -46,7 +46,7 @@ function getReviewIdFromUrl(): string | null {
 }
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<'landing' | 'results' | 'demo'>('landing');
+  const [currentView, setCurrentView] = useState<'landing' | 'loading' | 'results' | 'demo'>('landing');
   const [currentReview, setCurrentReview] = useState<PortfolioReview | null>(null);
   
   // History strictly reflects real audits stored in PostgreSQL
@@ -179,13 +179,21 @@ export default function App() {
     setAuditedUrl(url);
     setIsAuditing(true);
     setAuditError(null);
+    setCurrentView('loading');
 
-    // Scroll smoothly to loading area
-    window.scrollTo({ top: 180, behavior: 'smooth' });
+    // Scroll smoothly to top for the dedicated loading screen
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    const MIN_LOADING_TIME_MS = 2500; // ensures the user clearly sees the multi-stage audit scanner
 
     try {
       // Real API call to POST /api/reviews
-      const newReview = await reviewsApi.auditPortfolio(url);
+      const auditPromise = reviewsApi.auditPortfolio(url);
+
+      const [newReview] = await Promise.all([
+        auditPromise,
+        new Promise((resolve) => setTimeout(resolve, MIN_LOADING_TIME_MS)),
+      ]);
 
       // Successfully generated audit report
       setHistoryReviews((prev) => [newReview, ...prev.filter((r) => r.id !== newReview.id)]);
@@ -213,7 +221,8 @@ export default function App() {
         errorMsg = err.message;
       }
       setAuditError(errorMsg);
-      // Keep isAuditing true so LoadingState renders the high-contrast error card with Retry option
+      setIsAuditing(false);
+      // Keep view in 'loading' so LoadingScreen renders the error alert with Retry and Return actions
     }
   };
 
@@ -226,6 +235,7 @@ export default function App() {
   const handleCancelAudit = () => {
     setIsAuditing(false);
     setAuditError(null);
+    setCurrentView('landing');
   };
 
   const handleSelectReview = (review: PortfolioReview) => {
@@ -317,22 +327,18 @@ export default function App() {
               </div>
               <DemoOne />
             </div>
+          ) : currentView === 'loading' ? (
+            <LoadingScreen
+              url={auditedUrl}
+              error={auditError}
+              onRetry={handleRetryAudit}
+              onCancel={handleCancelAudit}
+              onSelectSample={handleAuditUrl}
+            />
           ) : currentView === 'landing' ? (
             <div>
               {/* Hero & Submission Form */}
               <HeroSection onSubmitUrl={handleAuditUrl} isLoading={isAuditing} />
-
-              {/* In-flight loading animation or error state when auditing */}
-              {isAuditing && (
-                <div className="max-w-5xl mx-auto px-4 -mt-8 mb-16 animate-in fade-in slide-in-from-bottom-3 duration-300">
-                  <LoadingState
-                    url={auditedUrl}
-                    error={auditError}
-                    onRetry={handleRetryAudit}
-                    onCancel={handleCancelAudit}
-                  />
-                </div>
-              )}
 
               {/* How It Works Section */}
               <HowItWorksSection />

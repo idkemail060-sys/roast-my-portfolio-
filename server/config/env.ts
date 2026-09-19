@@ -7,7 +7,7 @@ export const config = {
   nodeEnv: process.env.NODE_ENV || 'development',
   isProduction: process.env.NODE_ENV === 'production',
   corsOrigin: process.env.CORS_ORIGIN || '*',
-  requestTimeoutMs: Math.max(25000, parseInt(process.env.REQUEST_TIMEOUT_MS || '25000', 10)),
+  requestTimeoutMs: Math.max(65000, parseInt(process.env.REQUEST_TIMEOUT_MS || '65000', 10)),
   // Placeholders ready for Gemini & PostgreSQL in subsequent phases
   geminiApiKey: process.env.GEMINI_API_KEY || '',
   databaseUrl: process.env.DATABASE_URL || '',

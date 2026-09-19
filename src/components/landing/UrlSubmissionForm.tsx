@@ -181,17 +181,17 @@ export const UrlSubmissionForm: React.FC<UrlSubmissionFormProps> = ({
         <span className="text-neutral-400">Quick test portfolios:</span>
         <button
           type="button"
-          onClick={() => handleQuickFill('https://alexchen.dev')}
+          onClick={() => handleQuickFill('https://leerob.io')}
           className="px-2.5 py-1 rounded-md bg-neutral-900 border border-neutral-800 hover:border-neutral-700 text-neutral-300 hover:text-orange-400 transition-colors"
         >
-          alexchen.dev (Senior)
+          leerob.io (Senior)
         </button>
         <button
           type="button"
-          onClick={() => handleQuickFill('https://sarahkim.design')}
+          onClick={() => handleQuickFill('https://paco.me')}
           className="px-2.5 py-1 rounded-md bg-neutral-900 border border-neutral-800 hover:border-neutral-700 text-neutral-300 hover:text-orange-400 transition-colors"
         >
-          sarahkim.design (Design)
+          paco.me (Design Eng)
         </button>
         <button
           type="button"

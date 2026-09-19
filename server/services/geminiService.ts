@@ -260,138 +260,150 @@ Digest Key Observations: ${JSON.stringify(analysis.aiDigest.keyObservations)}
 
 Please evaluate this portfolio strictly adhering to the schema and return valid JSON only.`;
 
-  const modelsToTry = ['gemini-3.8-flash', 'gemini-3.1-flash-lite'];
+  const modelsToTry = [
+    { name: 'gemini-3.8-flash', timeoutMs: 9500 },
+    { name: 'gemini-3.1-flash-lite', timeoutMs: 7000 },
+  ];
   let lastError: unknown = null;
 
-  for (const modelName of modelsToTry) {
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      try {
-        const response = await client.models.generateContent({
-          model: modelName,
-          contents: userPrompt,
-          config: {
-            systemInstruction,
-            responseMimeType: 'application/json',
-            responseSchema: {
-              type: Type.OBJECT,
-              properties: {
-                overallScore: {
-                  type: Type.NUMBER,
-                  description: 'Overall portfolio rating from 0.0 to 10.0.',
-                },
-                uiUx: {
-                  type: Type.NUMBER,
-                  description: 'UI/UX score from 0.0 to 10.0.',
-                },
-                performance: {
-                  type: Type.NUMBER,
-                  description: 'Performance score from 0.0 to 10.0.',
-                },
-                accessibility: {
-                  type: Type.NUMBER,
-                  description: 'Accessibility score from 0.0 to 10.0.',
-                },
-                content: {
-                  type: Type.NUMBER,
-                  description: 'Content quality score from 0.0 to 10.0.',
-                },
-                summary: {
-                  type: Type.STRING,
-                  description: 'Concise 2-3 sentence executive audit summary.',
-                },
-                roast: {
-                  type: Type.STRING,
-                  description: 'Humorous, concise, and constructive developer roast based on the real portfolio signals.',
-                },
-                strengths: {
-                  type: Type.ARRAY,
-                  items: { type: Type.STRING },
-                  description: '3 to 5 real strengths evidenced by the data.',
-                },
-                issues: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.OBJECT,
-                    properties: {
-                      title: { type: Type.STRING, description: 'Clear issue title' },
-                      severity: { type: Type.STRING, description: 'Severity: high, medium, or low' },
-                      description: { type: Type.STRING, description: 'Concrete evidence-based description' },
-                    },
-                    required: ['title', 'severity', 'description'],
-                  },
-                  description: 'Real identified issues based strictly on the analysis.',
-                },
-                suggestions: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.OBJECT,
-                    properties: {
-                      title: { type: Type.STRING, description: 'Actionable suggestion title' },
-                      description: { type: Type.STRING, description: 'Specific recommendation' },
-                    },
-                    required: ['title', 'description'],
-                  },
-                  description: 'Actionable suggestions for improvement.',
-                },
+  for (const { name: modelName, timeoutMs } of modelsToTry) {
+    try {
+      const aiCallPromise = client.models.generateContent({
+        model: modelName,
+        contents: userPrompt,
+        config: {
+          systemInstruction,
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              overallScore: {
+                type: Type.NUMBER,
+                description: 'Overall portfolio rating from 0.0 to 10.0.',
               },
-              required: [
-                'overallScore',
-                'uiUx',
-                'performance',
-                'accessibility',
-                'content',
-                'summary',
-                'roast',
-                'strengths',
-                'issues',
-                'suggestions',
-              ],
+              uiUx: {
+                type: Type.NUMBER,
+                description: 'UI/UX score from 0.0 to 10.0.',
+              },
+              performance: {
+                type: Type.NUMBER,
+                description: 'Performance score from 0.0 to 10.0.',
+              },
+              accessibility: {
+                type: Type.NUMBER,
+                description: 'Accessibility score from 0.0 to 10.0.',
+              },
+              content: {
+                type: Type.NUMBER,
+                description: 'Content quality score from 0.0 to 10.0.',
+              },
+              summary: {
+                type: Type.STRING,
+                description: 'Concise 2-3 sentence executive audit summary.',
+              },
+              roast: {
+                type: Type.STRING,
+                description: 'Humorous, concise, and constructive developer roast based on the real portfolio signals.',
+              },
+              strengths: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING },
+                description: '3 to 5 real strengths evidenced by the data.',
+              },
+              issues: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    title: { type: Type.STRING, description: 'Clear issue title' },
+                    severity: { type: Type.STRING, description: 'Severity: high, medium, or low' },
+                    description: { type: Type.STRING, description: 'Concrete evidence-based description' },
+                  },
+                  required: ['title', 'severity', 'description'],
+                },
+                description: 'Real identified issues based strictly on the analysis.',
+              },
+              suggestions: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    title: { type: Type.STRING, description: 'Actionable suggestion title' },
+                    description: { type: Type.STRING, description: 'Specific recommendation' },
+                  },
+                  required: ['title', 'description'],
+                },
+                description: 'Actionable suggestions for improvement.',
+              },
             },
+            required: [
+              'overallScore',
+              'uiUx',
+              'performance',
+              'accessibility',
+              'content',
+              'summary',
+              'roast',
+              'strengths',
+              'issues',
+              'suggestions',
+            ],
           },
-        });
+        },
+      });
 
-        const duration = Date.now() - startTime;
-        const rawText = response.text;
+      // Strict race timeout so AI call never hangs the server request
+      let timer: NodeJS.Timeout;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`AI generation timed out after ${timeoutMs}ms for ${modelName}`)),
+          timeoutMs
+        );
+      });
 
-        if (!rawText) {
-          console.warn(`[GeminiService] Empty response received from ${modelName} after ${duration}ms.`);
-          continue;
-        }
+      const response = await Promise.race([aiCallPromise, timeoutPromise]).finally(() => {
+        clearTimeout(timer!);
+      });
 
-        // Clean potential markdown wrap if any (e.g. ```json ... ```)
-        let cleanedText = rawText.trim();
-        if (cleanedText.startsWith('```json')) {
-          cleanedText = cleanedText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-        } else if (cleanedText.startsWith('```')) {
-          cleanedText = cleanedText.replace(/^```\s*/, '').replace(/\s*```$/, '');
-        }
+      const duration = Date.now() - startTime;
+      const rawText = response.text;
 
-        let parsed: unknown;
-        try {
-          parsed = JSON.parse(cleanedText);
-        } catch (parseErr) {
-          console.warn(
-            `[GeminiService] Failed to parse JSON from ${modelName} (${duration}ms):`,
-            parseErr instanceof Error ? parseErr.message : 'Syntax error'
-          );
-          continue;
-        }
-
-        const validated = validateAndNormalizeAiAudit(parsed);
-        if (!validated) {
-          console.warn(`[GeminiService] AI output failed schema validation (${duration}ms).`);
-          continue;
-        }
-
-        console.log(`[GeminiService] Successfully generated AI portfolio audit with ${modelName} in ${duration}ms for ${analysis.domain}`);
-        return validated;
-      } catch (error) {
-        lastError = error;
-        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-        console.warn(`[GeminiService] Attempt ${attempt} with ${modelName} encountered: ${errorMsg}`);
-        // Quick backoff before next attempt
-        await new Promise((res) => setTimeout(res, 800 * attempt));
+      if (!rawText) {
+        console.warn(`[GeminiService] Empty response received from ${modelName} after ${duration}ms.`);
+        continue;
       }
+
+      // Clean potential markdown wrap if any (e.g. ```json ... ```)
+      let cleanedText = rawText.trim();
+      if (cleanedText.startsWith('```json')) {
+        cleanedText = cleanedText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (cleanedText.startsWith('```')) {
+        cleanedText = cleanedText.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(cleanedText);
+      } catch (parseErr) {
+        console.warn(
+          `[GeminiService] Failed to parse JSON from ${modelName} (${duration}ms):`,
+          parseErr instanceof Error ? parseErr.message : 'Syntax error'
+        );
+        continue;
+      }
+
+      const validated = validateAndNormalizeAiAudit(parsed);
+      if (!validated) {
+        console.warn(`[GeminiService] AI output failed schema validation (${duration}ms).`);
+        continue;
+      }
+
+      console.log(`[GeminiService] Successfully generated AI portfolio audit with ${modelName} in ${duration}ms for ${analysis.domain}`);
+      return validated;
+    } catch (error) {
+      lastError = error;
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      console.warn(`[GeminiService] Model ${modelName} encountered: ${errorMsg}`);
     }
   }
 

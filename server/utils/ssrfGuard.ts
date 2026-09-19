@@ -128,11 +128,25 @@ export async function validateSafeFetchTarget(urlStr: string): Promise<{
 
   // Resolve DNS records
   let addresses: Array<{ address: string; family: number }>;
+  let targetHostname = hostname;
   try {
-    addresses = await dns.lookup(hostname, { all: true });
+    addresses = await dns.lookup(targetHostname, { all: true });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'DNS resolution failed';
-    throw AppError.badRequest(`Could not resolve domain "${hostname}": ${message}`);
+    // If lookup failed, attempt alternative (try with or without 'www.')
+    const altHostname = targetHostname.startsWith('www.')
+      ? targetHostname.replace(/^www\./, '')
+      : `www.${targetHostname}`;
+
+    try {
+      addresses = await dns.lookup(altHostname, { all: true });
+      targetHostname = altHostname;
+      parsed.hostname = altHostname;
+    } catch {
+      const message = err instanceof Error ? err.message : 'DNS lookup failed';
+      throw AppError.badRequest(
+        `Could not resolve domain "${hostname}": ${message}. Please verify the domain name is spelled correctly and is active on the public web.`
+      );
+    }
   }
 
   if (!addresses || addresses.length === 0) {
